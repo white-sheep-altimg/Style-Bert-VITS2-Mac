@@ -145,15 +145,15 @@ if device == "cpu":
 ```diff
 -torch==2.7.1
 -torchaudio==2.7.1
-+torch==2.5.1
-+torchaudio==2.5.1
++torch==2.6.0
++torchaudio==2.6.0
 ```
 
 #### 理由
 
 1. **CVE-2025-32434**: PyTorch < 2.6 は `torch.load()` の脆弱性により transformers がブロックする
-2. **Hardware stability**: 現在の硬件（T6041 / macOS 26.5）では 2.5.1 が最も安定
-3. **MPS fallback により 2.7 依存のメリット減少**: MPS を使わないため、2.7 の新 MPS 機能は不要
+2. **Hardware stability**: 現在の硬件（T6041 / macOS 26.5）では 2.6.0 で安定動作を確認
+3. **MPS fallback により 過剰な依存回避**: MPS を使わないため、2.6.0 を採用
 
 ---
 
