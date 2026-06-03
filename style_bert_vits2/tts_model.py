@@ -270,7 +270,10 @@ class TTSModel:
             self.load()
         assert self.__net_g is not None
         if reference_audio_path is None:
-            style_id = self.style2id[style]
+            if style not in self.style2id or not self.style2id:
+                style_id = 0
+            else:
+                style_id = self.style2id[style]
             style_vector = self.__get_style_vector(style_id, style_weight)
         else:
             style_vector = self.__get_style_vector_from_audio(
@@ -368,7 +371,7 @@ class TTSModelHolder:
             device (str): 音声合成時に利用するデバイス (cpu, cuda, mps など)
         """
 
-        self.root_dir: Path = model_root_dir
+        self.root_dir: Path = model_root_dir.resolve()
         self.device: str = device
         self.model_files_dict: dict[str, list[Path]] = {}
         self.current_model: Optional[TTSModel] = None
@@ -402,7 +405,7 @@ class TTSModelHolder:
                     f"Config file {config_path} not found, so skip {model_dir}"
                 )
                 continue
-            self.model_files_dict[model_dir.name] = model_files
+            self.model_files_dict[model_dir.name] = [f.resolve() for f in model_files]
             self.model_names.append(model_dir.name)
             hyper_parameters = HyperParameters.load_from_json(config_path)
             style2id: dict[str, int] = hyper_parameters.data.style2id
@@ -431,11 +434,15 @@ class TTSModelHolder:
             TTSModel: 音声合成モデルのインスタンス
         """
 
-        model_path = Path(model_path_str)
+        model_path = Path(model_path_str).resolve()
         if model_name not in self.model_files_dict:
             raise ValueError(f"Model `{model_name}` is not found")
+        # Normalize model_path_str against root_dir as fallback
         if model_path not in self.model_files_dict[model_name]:
-            raise ValueError(f"Model file `{model_path}` is not found")
+            root_path = (self.root_dir / model_path_str).resolve()
+            if root_path not in self.model_files_dict[model_name]:
+                raise ValueError(f"Model file `{model_path}` is not found")
+            model_path = root_path
         if self.current_model is None or self.current_model.model_path != model_path:
             self.current_model = TTSModel(
                 model_path=model_path,
@@ -449,7 +456,7 @@ class TTSModelHolder:
     def get_model_for_gradio(self, model_name: str, model_path_str: str):
         import gradio as gr
 
-        model_path = Path(model_path_str)
+        model_path = Path(model_path_str).resolve()
         if model_name not in self.model_files_dict:
             raise ValueError(f"Model `{model_name}` is not found")
         if model_path not in self.model_files_dict[model_name]:

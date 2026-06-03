@@ -405,6 +405,15 @@ class TextEncoder(nn.Module):
         sid: torch.Tensor,
         g: Optional[torch.Tensor] = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        # DEBUG: dtype diagnostics for Conv1d layers
+        for name, emb in [("bert", bert), ("ja_bert", ja_bert), ("en_bert", en_bert)]:
+            proj = getattr(self, f"{name}_proj")
+            print(
+                f"DEBUG TextEncoder.forward: {name} input dtype={emb.dtype}, "
+                f"proj.weight dtype={proj.weight.dtype}, "
+                f"proj.bias dtype={proj.bias.dtype if proj.bias is not None else None}",
+                flush=True,
+            )
         bert_emb = self.bert_proj(bert).transpose(1, 2)
         ja_bert_emb = self.ja_bert_proj(ja_bert).transpose(1, 2)
         en_bert_emb = self.en_bert_proj(en_bert).transpose(1, 2)

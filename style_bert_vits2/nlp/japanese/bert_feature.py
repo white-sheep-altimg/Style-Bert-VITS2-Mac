@@ -45,13 +45,13 @@ def extract_bert_feature(
         for i in inputs:
             inputs[i] = inputs[i].to(device)  # type: ignore
         res = model(**inputs, output_hidden_states=True)
-        res = torch.cat(res["hidden_states"][-3:-2], -1)[0].cpu()
+        res = torch.cat(res["hidden_states"][-3:-2], -1)[0].cpu().float()
         if assist_text:
             style_inputs = tokenizer(assist_text, return_tensors="pt")
             for i in style_inputs:
                 style_inputs[i] = style_inputs[i].to(device)  # type: ignore
             style_res = model(**style_inputs, output_hidden_states=True)
-            style_res = torch.cat(style_res["hidden_states"][-3:-2], -1)[0].cpu()
+            style_res = torch.cat(style_res["hidden_states"][-3:-2], -1)[0].cpu().float()
             style_res_mean = style_res.mean(0)
 
     assert len(word2ph) == len(text) + 2, text
@@ -70,4 +70,6 @@ def extract_bert_feature(
 
     phone_level_feature = torch.cat(phone_level_feature, dim=0)
 
-    return phone_level_feature.T
+    result = phone_level_feature.T
+    print(f"DEBUG extract_bert_feature return: dtype={result.dtype}, shape={result.shape}", flush=True)
+    return result

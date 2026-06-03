@@ -415,6 +415,13 @@ class TextEncoder(nn.Module):
         style_vec: torch.Tensor,
         g: Optional[torch.Tensor] = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        # DEBUG: dtype diagnostics for Conv1d layers
+        print(
+            f"DEBUG JP-Extra TextEncoder.forward: bert input dtype={bert.dtype}, "
+            f"bert_proj.weight dtype={self.bert_proj.weight.dtype}, "
+            f"bert_proj.bias dtype={self.bert_proj.bias.dtype if self.bert_proj.bias is not None else None}",
+            flush=True,
+        )
         bert_emb = self.bert_proj(bert).transpose(1, 2)
         style_emb = self.style_proj(style_vec.unsqueeze(1))
         x = (
@@ -1122,6 +1129,7 @@ class SynthesizerTrn(nn.Module):
         sdp_ratio: float = 0.0,
         y: Optional[torch.Tensor] = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, tuple[torch.Tensor, ...]]:
+        print(f"DEBUG SynthesizerTrnJPExtra.infer entry: bert dtype={bert.dtype}, shape={bert.shape}", flush=True)
         # x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths, tone, language, bert)
         # g = self.gst(y)
         if self.n_speakers > 0:

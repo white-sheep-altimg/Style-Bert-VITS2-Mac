@@ -1,6 +1,6 @@
 cmudict
 cn2an
-faster-whisper==0.10.1
+faster-whisper>=0.10.1
 g2p_en
 GPUtil
 gradio>=4.32
@@ -20,7 +20,7 @@ pypinyin
 pyworld-prebuilt
 stable_ts
 tensorboard
-torch==2.7.1
-torchaudio==2.7.1
+torch==2.5.1
+torchaudio==2.5.1
 transformers
 umap-learn

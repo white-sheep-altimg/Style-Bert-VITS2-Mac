@@ -1,6 +1,7 @@
 from typing import Any, Optional, Union, cast
 
 import torch
+import torch.nn as nn
 from numpy.typing import NDArray
 
 from style_bert_vits2.constants import Languages
@@ -21,7 +22,7 @@ from style_bert_vits2.nlp.symbols import SYMBOLS
 
 def get_net_g(model_path: str, version: str, device: str, hps: HyperParameters):
     if version.endswith("JP-Extra"):
-        logger.info("Using JP-Extra model")
+        print("DEBUG: Using JP-Extra model", flush=True)
         net_g = SynthesizerTrnJPExtra(
             n_vocab=len(SYMBOLS),
             spec_channels=hps.data.filter_length // 2 + 1,
@@ -90,6 +91,24 @@ def get_net_g(model_path: str, version: str, device: str, hps: HyperParameters):
         )
     elif model_path.endswith(".safetensors"):
         _ = utils.safetensors.load_safetensors(model_path, net_g, True)
+        print(f"DEBUG get_net_g: device={device}, model_path={model_path}", flush=True)
+        if device == "cpu":
+            print("DEBUG: CPU device detected - applying float() conversion", flush=True)
+            net_g = net_g.float()
+            # Ensure all Conv1d bias parameters match weight dtype.
+            # Use register_parameter so PyTorch properly tracks the updated bias.
+            for name, child in net_g.named_modules():
+                if isinstance(child, nn.Conv1d) and child.bias is not None:
+                    child.bias = torch.nn.Parameter(child.bias.float(), requires_grad=False)
+                    child.register_parameter('bias', child.bias)
+            # DEBUG: verify Conv1d dtypes after conversion
+            for n, m in net_g.named_modules():
+                if isinstance(m, nn.Conv1d) and m.bias is not None:
+                    if "bert" in n or "ja_bert" in n or "en_bert" in n:
+                        print(
+                            f"DEBUG Conv1d after float(): {n} weight={m.weight.dtype} bias={m.bias.dtype}",
+                            flush=True,
+                        )
     else:
         raise ValueError(f"Unknown model format: {model_path}")
     return net_g
@@ -192,6 +211,7 @@ def get_text(
         phone
     ), f"Bert seq len {bert.shape[-1]} != {len(phone)}"
 
+    print(f"DEBUG get_text return: bert dtype={bert.dtype}, ja_bert dtype={ja_bert.dtype}, en_bert dtype={en_bert.dtype}", flush=True)
     phone = torch.LongTensor(phone)
     tone = torch.LongTensor(tone)
     language = torch.LongTensor(language)
@@ -242,6 +262,7 @@ def infer(
         bert = bert[:, :-2]
         ja_bert = ja_bert[:, :-2]
         en_bert = en_bert[:, :-2]
+    print(f"DEBUG infer before .to(device): bert dtype={bert.dtype}, ja_bert dtype={ja_bert.dtype}, en_bert dtype={en_bert.dtype}", flush=True)
     with torch.no_grad():
         x_tst = phones.to(device).unsqueeze(0)
         tones = tones.to(device).unsqueeze(0)
@@ -249,10 +270,12 @@ def infer(
         bert = bert.to(device).unsqueeze(0)
         ja_bert = ja_bert.to(device).unsqueeze(0)
         en_bert = en_bert.to(device).unsqueeze(0)
+        print(f"DEBUG infer after .to(device): bert dtype={bert.dtype}, ja_bert dtype={ja_bert.dtype}, en_bert dtype={en_bert.dtype}, device={device}", flush=True)
         x_tst_lengths = torch.LongTensor([phones.size(0)]).to(device)
         style_vec_tensor = torch.from_numpy(style_vec).to(device).unsqueeze(0)
         del phones
         sid_tensor = torch.LongTensor([sid]).to(device)
+        print(f"DEBUG infer passing to SynthesizerTrn: ja_bert dtype={ja_bert.dtype}, shape={ja_bert.shape}", flush=True)
         if is_jp_extra:
             output = cast(SynthesizerTrnJPExtra, net_g).infer(
                 x_tst,

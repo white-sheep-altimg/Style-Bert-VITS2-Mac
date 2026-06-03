@@ -101,11 +101,22 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # 使えれば CUDA もしくは MPS、どちらも無ければ CPU
+    # 使えれば CUDA、次に MPS を試す、ダメなら CPU
     if torch.cuda.is_available():
         device = "cuda"
     elif torch.backends.mps.is_built():
-        device = "mps"
+        # MPS 試用 —.watermark_ratio バグ対策: テスト後に失敗したら CPU フォールバック
+        _test_mps = False
+        try:
+            torch.randn(1, 1, device="mps")
+            _test_mps = True
+        except RuntimeError:
+            _test_mps = False
+        if _test_mps:
+            device = "mps"
+        else:
+            logger.warning("MPS test failed (watermark ratio bug). Falling back to CPU.")
+            device = "cpu"
     else:
         device = "cpu"
 
