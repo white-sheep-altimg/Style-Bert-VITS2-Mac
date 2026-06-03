@@ -23,7 +23,31 @@ macOS 26.5 / Apple T6041 において PyTorch 2.7 の MPS backend に `RuntimeEr
 
 ### 3. 依存関係の調整（`requirements.txt`）
 
-- `torch==2.5.1`, `torchaudio==2.5.1` に固定（CVE-2025-32434 対策 + 現在硬件の安定動作版）
+- `torch==2.6.0`, `torchaudio==2.6.0` に固定（CVE-2025-32434 対策 + 現在硬件の安定動作版）
+- `numpy<2`（既存のコードとの互換性のため）
+
+### 4. 新規インストール時の必須手順
+
+新規clone後、以下の依存パッケージを追加インストールする必要があります:
+
+```bash
+# pyenvまたはpython3.11でvenvを作成
+python3.11 -m venv .venv
+source .venv/bin/activate
+
+# 依存パッケージをインストール
+pip install -r requirements.txt
+
+# setuptoolsのpkg_resources使用のため（librosa依存）
+pip install 'setuptools<81'
+
+# transformersのaudio_utilsがsoxrを必要とするため
+pip install soxr
+```
+
+### 5. Pythonバージョンの固定
+
+`.python-version` ファイルに `3.11.13` を記載し、pyenvでPython 3.11 系を使用します。
 
 ## テスト手順
 
