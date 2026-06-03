@@ -43,6 +43,9 @@ pip install 'setuptools<81'
 
 # transformersのaudio_utilsがsoxrを必要とするため
 pip install soxr
+
+# モデルのダウンロード
+python initialize.py
 ```
 
 ### 5. Pythonバージョンの固定
