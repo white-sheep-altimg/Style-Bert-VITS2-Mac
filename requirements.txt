@@ -20,7 +20,7 @@ pypinyin
 pyworld-prebuilt
 stable_ts
 tensorboard
-torch==2.6.0
-torchaudio==2.6.0
+torch==2.7.1
+torchaudio==2.7.1
 transformers
 umap-learn

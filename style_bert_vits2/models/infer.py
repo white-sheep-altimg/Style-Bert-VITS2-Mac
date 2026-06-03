@@ -20,6 +20,17 @@ from style_bert_vits2.nlp import (
 from style_bert_vits2.nlp.symbols import SYMBOLS
 
 
+def _to_device(module: nn.Module, device: str) -> nn.Module:
+    """Move module to device, with fallback to CPU on MPS low watermark error."""
+    try:
+        return module.to(device)
+    except RuntimeError as e:
+        if "invalid low watermark" in str(e) and device == "mps":
+            logger.warning(f"MPS .to() failed with low watermark error, falling back to CPU: {e}")
+            return module.to("cpu")
+        raise
+
+
 def get_net_g(model_path: str, version: str, device: str, hps: HyperParameters):
     if version.endswith("JP-Extra"):
         print("DEBUG: Using JP-Extra model", flush=True)
@@ -51,7 +62,8 @@ def get_net_g(model_path: str, version: str, device: str, hps: HyperParameters):
             use_spectral_norm=hps.model.use_spectral_norm,
             gin_channels=hps.model.gin_channels,
             slm=hps.model.slm,
-        ).to(device)
+        )
+        net_g = _to_device(net_g, device)
     else:
         logger.info("Using normal model")
         net_g = SynthesizerTrn(
@@ -82,7 +94,8 @@ def get_net_g(model_path: str, version: str, device: str, hps: HyperParameters):
             use_spectral_norm=hps.model.use_spectral_norm,
             gin_channels=hps.model.gin_channels,
             slm=hps.model.slm,
-        ).to(device)
+        )
+        net_g = _to_device(net_g, device)
     net_g.state_dict()
     _ = net_g.eval()
     if model_path.endswith(".pth") or model_path.endswith(".pt"):

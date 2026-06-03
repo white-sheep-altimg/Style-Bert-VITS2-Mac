@@ -17,6 +17,9 @@ from style_bert_vits2.tts_model import TTSModelHolder
 
 import os
 
+# Fix MPS low watermark ratio error on PyTorch 2.6+/2.7.x
+os.environ.setdefault("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+
 # このプロセスからはワーカーを起動して辞書を使いたいので、ここで初期化
 pyopenjtalk_worker.initialize_worker()
 
@@ -35,19 +38,11 @@ parser.add_argument("--share", action="store_true")
 args = parser.parse_args()
 device = args.device
 
-if torch.cuda.is_available():
-    device = "cuda"
-elif torch.backends.mps.is_built():
-    device = "mps"
-else:
-    device = "cpu"
-
-# CPU なら、マシンのキャパの半分を割り振る。環境に応じて調整してください
-if device == "cpu":
-    torch.set_num_threads(os.cpu_count()//2)
-
-# Set the device to CPU as currently PyTorch Nightly fails with MPS to generate voice.
-#device = "cpu"
+# MPS には PyTorch 2.6+/2.7.x で `.to(device)` が low watermark エラーで失敗するバグがあるため、
+# Apple Silicon でも常に CPU を使用する。CPU スレッド数はマシンのキャパの半分を割り当てる。
+device = "cpu"
+torch.set_num_threads(os.cpu_count() // 2)
+print(f"INFO: Using CPU device (PyTorch {torch.__version__}) due to MPS .to() low watermark bug", flush=True)
 
 # if not args.skip_default_models:
 #     download_default_models()
