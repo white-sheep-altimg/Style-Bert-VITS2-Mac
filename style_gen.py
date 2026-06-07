@@ -5,6 +5,40 @@ from typing import Any
 import numpy as np
 import torch
 from numpy.typing import NDArray
+
+# Patch torch.load for PyTorch 2.6+ (weights_only default changed to True)
+_orig_torch_load = torch.load
+def _patched_torch_load(f, *args, **kwargs):
+    # PyTorch 2.6+ defaults weights_only=True which breaks loading old checkpoints
+    kwargs["weights_only"] = False
+    return _orig_torch_load(f, *args, **kwargs)
+torch.load = _patched_torch_load
+
+# Patch lightning_fabric._load (calls torch.load internally)
+import lightning_fabric.utilities.cloud_io as _lf_cloud_io
+_orig_lf_load = _lf_cloud_io._load
+def _patched_lf_load(path_or_url, *args, map_location=None, weights_only=None, **kwargs):
+    if map_location is None:
+        map_location = lambda storage, loc: storage
+    # PyTorch 2.6+ defaults weights_only=True which breaks loading old checkpoints
+    if "weights_only" in kwargs:
+        kwargs["weights_only"] = False
+    else:
+        kwargs["weights_only"] = False
+    return _orig_lf_load(path_or_url, *args, map_location=map_location, **kwargs)
+_lf_cloud_io._load = _patched_lf_load
+
+# Patch hf_hub_download for huggingface_hub >= 0.24 (use_auth_token -> token)
+import huggingface_hub
+_orig_hf_hub_download = huggingface_hub.hf_hub_download
+def _patched_hf_hub_download(*args, use_auth_token=None, **kwargs):
+    if use_auth_token is not None:
+        kwargs["token"] = use_auth_token
+        del kwargs["use_auth_token"]
+    return _orig_hf_hub_download(*args, **kwargs)
+huggingface_hub.hf_hub_download = _patched_hf_hub_download
+huggingface_hub.file_download.hf_hub_download = _patched_hf_hub_download
+
 from pyannote.audio import Inference, Model
 from tqdm import tqdm
 

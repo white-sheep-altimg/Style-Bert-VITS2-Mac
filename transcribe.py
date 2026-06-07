@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
+import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
@@ -75,7 +76,7 @@ def transcribe_files_with_hf_whisper(
         chunk_length_s=30,
         batch_size=batch_size,
         torch_dtype=torch.float16,
-        device="cuda",
+        device=device,
         trust_remote_code=True,
         # generate_kwargs=generate_kwargs,
     )
@@ -125,7 +126,7 @@ if __name__ == "__main__":
         "--language", type=str, default="ja", choices=["ja", "en", "zh"]
     )
     parser.add_argument("--model", type=str, default="large-v3")
-    parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--device", type=str, default="auto")
     parser.add_argument("--compute_type", type=str, default="bfloat16")
     parser.add_argument("--use_hf_whisper", action="store_true")
     parser.add_argument("--hf_repo_id", type=str, default="")
@@ -145,6 +146,15 @@ if __name__ == "__main__":
     initial_prompt = initial_prompt.strip('"')
     language: str = args.language
     device: str = args.device
+
+    # Auto-detect device: prefer MPS on macOS, fallback to CPU
+    if device == "auto":
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+    logger.info(f"Using device: {device}")
+
     compute_type: str = args.compute_type
     batch_size: int = args.batch_size
     num_beams: int = args.num_beams

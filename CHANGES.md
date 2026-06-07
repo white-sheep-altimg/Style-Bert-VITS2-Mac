@@ -157,6 +157,50 @@ if device == "cpu":
 
 ---
 
+---
+
+### [Fix] transcribe.py の macOS 対応（GPU なし環境での文字起こし対応）
+
+**ファイル**: `transcribe.py`
+**状態**: 修正済み
+
+#### 変更内容
+
+1. `--device` 引数のデフォルト値を `"cuda"` から `"auto"` に変更
+2. `auto` モードで macOS の MPS 利用可否を自動検出（利用不可なら CPU フォールバック）
+3. `transcribe_files_with_hf_whisper()` 内で HF Whisper pipeline の `device` パラメータがハードコード (`"cuda"`) されていたのを、引数 `device` で受け取るように修正
+4. `__main__` ブロックで `torch` をインポート可能にするためファイル先頭に `import torch` を追加
+
+---
+
+### [Fix] style_gen.py の依存パッケージ互換性パッチ
+
+**ファイル**: `style_gen.py`
+**状態**: 修正済み
+
+#### 発現事象
+
+学習パイプラインの `style_gen` ステップで以下エラーが発生し、音声スタイル特徴量の生成が失敗:
+
+```
+TypeError: hf_hub_download() got an unexpected keyword argument 'use_auth_token'
+_pickle.UnpicklingError: Weights only load failed... PyTorch 2.6 changed default of weights_only from False to True
+```
+
+#### 原因
+
+1. `huggingface_hub 1.17.0` で `use_auth_token` 引数が削除され `token` に変更されたが、`pyannote/audio 3.4.0` が古い引数名で呼び出している
+2. `torch 2.6+` で `torch.load()` の `weights_only` 引数のデフォルトが `True` に変わったが、`pyannote/audio` のチェックポイントは古い pickle フォーマットで `weights_only=False` でのみロード可能
+
+#### 修正内容
+
+3つのパッチを `style_gen.py` 先頭に追加:
+- `torch.load` のラッパー: `weights_only=False` を強制
+- `lightning_fabric._load` のラッパー: `weights_only=False` を強制
+- `hf_hub_download` のラッパー: `use_auth_token` を `token` に変換
+
+---
+
 ### [Debug] トレースコード追加（開発時一時的）
 
 **ファイル**: `style_bert_vits2/nlp/japanese/bert_feature.py`

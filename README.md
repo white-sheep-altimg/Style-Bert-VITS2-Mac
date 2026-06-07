@@ -56,6 +56,14 @@ python initialize.py
 
 Gradio WebUI（`app.py`）でも同様に MPS を使用せず CPU を強制する。環境変数 `PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0` での回避も試みたが、gradio の import 時に MPS バックエンドが初期化されてしまうため機能しなかった。CPU スレッド数は `os.cpu_count() // 2` を割り当てる。
 
+### 7. 文字起こし（`transcribe.py`）の macOS 対応
+
+`--device` のデフォルト値を `"cuda"` から `"auto"` に変更。`auto` モードでは macOS で MPS が利用可能な場合は MPS を、否则 CPU を自動選択する。また HF Whisper pipeline の `device` パラメータがハードコードされていたのを引数で受け取るように修正。
+
+### 8. 学習パイプラインの依存パッケージ互換性パッチ（`style_gen.py`）
+
+PyTorch 2.6+ で `torch.load()` の `weights_only` 引数のデフォルトが `True` に変わったことに起因する古いチェックポイントのロード失敗をパッチで回避。また `huggingface_hub >= 0.24` で `use_auth_token` が `token` に変更されたことに伴う `pyannote/audio` の互換性問題もパッチで修正。
+
 ## テスト手順
 
 ### 1. サーバー起動
