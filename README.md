@@ -3,6 +3,15 @@
 ## 概要
 
 Style-Bert-VITS2 の日本語音声合成サーバーを macOS（Apple Silicon）で安定して動作させるための改変です。
+tokyohandsome様の https://github.com/tokyohandsome/Style-Bert-VITS2-Mac.git のフォークです。
+
+これは個人的なハック＋Claude-Code利用による改修です。自身の環境でしかテストしていませんので問題が残っているかもしれません。
+オリジナル，フォーク元ともにCLI起動を前提としておりますが，サービスとしての起動コマンドも追加しています。
+
+音声合成，学習など一通りは動かしていますが，ほぼ全ての機能をCPUにフォールバクして動かしています。PyTorchなど依存関係の問題もあるMPSでの動作は難しいかもしれません。
+
+なお，ライセンスはフォーク元，オリジナルを暗唱してください。
+
 
 ## サービス管理（`hsat`）
 
@@ -149,3 +158,14 @@ DEBUG JP-Extra TextEncoder.forward: bert input dtype=torch.float32, bert_proj.we
 - **MPS 非対応**: watermark ratio バグのため、現時点では CPU フォールバックが必要です
 - **推論速度**: CPU 実行のため、MPS が正常動作すれば GPU 加速能达到レベルには達しません。ただし実用上は問題ない速度です
 - **日本語テキストの長さ制限**: 既定で 100 文字（`config.yml` の `server.limit` で変更可能）
+
+
+
+# Original README.md
+フォーク元のREADME.mdはREADME_orig.mdです。
+
+tokyohandsome様がハックしていなければTahoeで動かそうという気持ちには，そもそもならなかったでしょう。
+とても感謝しております。
+
+https://github.com/tokyohandsome/Style-Bert-VITS2-Mac.git
+
