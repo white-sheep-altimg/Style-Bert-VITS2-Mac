@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# =============================================================================
+# hsat - Style-Bert-VITS2-Mac API Server Management CLI
+# =============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PID_FILE="${SCRIPT_DIR}/tmp/server.pid"
+LOG_DIR="${SCRIPT_DIR}/logs"
+TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+LOG_FILE="${LOG_DIR}/server-${TIMESTAMP}.log"
+if [[ -f "${SCRIPT_DIR}/.venv/bin/python" ]]; then
+    VENV_PYTHON="${SCRIPT_DIR}/.venv/bin/python"
+elif [[ -f "${SCRIPT_DIR}/venv/bin/python" ]]; then
+    VENV_PYTHON="${SCRIPT_DIR}/venv/bin/python"
+else
+    VENV_PYTHON=""
+fi
+SERVER_SCRIPT="${SCRIPT_DIR}/server_speech_fastapi.py"
+SERVER_PORT=50021
+PIDOL_TIMEOUT=10
+
+# --- Helpers ---
+usage() {
+    cat <<'EOF'
+Usage: hsat <command> [options]
+
+Commands:
+  start     Start API server as background daemon
+  stop      Stop the running server
+  status    Show server status
+  logs      Follow log file (tail -f)
+  help      Show this help
+
+Options (start only):
+  --cpu     Use CPU instead of MPS/GPU
+EOF
+    exit "${1:-0}"
+}
+
+is_server_running() {
+    if [[ -f "${PID_FILE}" ]]; then
+        local pid
+        pid=$(cat "${PID_FILE}")
+        if kill -0 "${pid}" 2>/dev/null; then
+            return 0
+        fi
+        echo "Removing stale PID file (PID ${pid} not running)"
+        rm -f "${PID_FILE}"
+    fi
+    if lsof -i :${SERVER_PORT} > /dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+cmd_start() {
+    local cpu_flag=""
+    for arg in "$@"; do
+        if [[ "${arg}" == "--cpu" ]]; then
+            cpu_flag="--cpu"
+        fi
+    done
+
+    if [[ -z "${VENV_PYTHON}" ]] || [[ ! -f "${VENV_PYTHON}" ]]; then
+        echo "ERROR: Python venv not found (.venv/ or venv/)"
+        exit 1
+    fi
+    if [[ ! -f "${SERVER_SCRIPT}" ]]; then
+        echo "ERROR: Server script not found at ${SERVER_SCRIPT}"
+        exit 1
+    fi
+
+    if is_server_running; then
+        echo "Server is already running (port ${SERVER_PORT} is in use)"
+        exit 1
+    fi
+
+    mkdir -p "${LOG_DIR}" "${SCRIPT_DIR}/tmp"
+
+    nohup "${VENV_PYTHON}" "${SERVER_SCRIPT}" ${cpu_flag} \
+        >> "${LOG_FILE}" 2>&1 &
+    local server_pid=$!
+    echo "${server_pid}" > "${PID_FILE}"
+
+    echo "Starting server (PID: ${server_pid})..."
+    echo "Log file: ${LOG_FILE}"
+
+    local ready=false
+    for i in $(seq 1 30); do
+        if lsof -i :${SERVER_PORT} > /dev/null 2>&1; then
+            ready=true
+            break
+        fi
+        sleep 0.5
+    done
+
+    if ${ready}; then
+        echo "Server is ready on http://0.0.0.0:${SERVER_PORT}"
+        echo "  Status:  hsat status"
+        echo "  Logs:    hsat logs"
+        echo "  Stop:    hsat stop"
+    else
+        echo "WARNING: Server may not have started successfully"
+        echo "Check log file: ${LOG_FILE}"
+    fi
+}
+
+cmd_stop() {
+    if [[ ! -f "${PID_FILE}" ]]; then
+        echo "No PID file found. Server may not be running."
+        if is_server_running; then
+            echo "(But port ${SERVER_PORT} is in use by another process)"
+        fi
+        exit 1
+    fi
+
+    local pid
+    pid=$(cat "${PID_FILE}")
+
+    if ! kill -0 "${pid}" 2>/dev/null; then
+        echo "Process ${pid} is not running. Cleaning up stale PID file."
+        rm -f "${PID_FILE}"
+        exit 1
+    fi
+
+    echo "Stopping server (PID: ${pid})..."
+    kill -TERM "${pid}" 2>/dev/null || true
+
+    for i in $(seq 1 ${PIDOL_TIMEOUT}); do
+        if ! kill -0 "${pid}" 2>/dev/null; then
+            echo "Server stopped gracefully"
+            rm -f "${PID_FILE}"
+            exit 0
+        fi
+        sleep 1
+    done
+
+    echo "Server did not stop in ${PIDOL_TIMEOUT}s, sending SIGKILL..."
+    kill -KILL "${pid}" 2>/dev/null || true
+    rm -f "${PID_FILE}"
+    echo "Server killed"
+}
+
+cmd_status() {
+    if ! is_server_running; then
+        echo "Server is NOT running"
+        echo "  Start: hsat start [--cpu]"
+        exit 1
+    fi
+
+    if [[ -f "${PID_FILE}" ]]; then
+        local pid
+        pid=$(cat "${PID_FILE}")
+        if kill -0 "${pid}" 2>/dev/null; then
+            echo "Server is running (PID: ${pid})"
+        else
+            echo "Server: stale PID file (PID ${pid} not found)"
+        fi
+    fi
+
+    if lsof -i :${SERVER_PORT} > /dev/null 2>&1; then
+        echo "Port ${SERVER_PORT}: LISTENING"
+    fi
+}
+
+cmd_logs() {
+    local latest_log
+    latest_log=$(ls -t "${LOG_DIR}"/server-*.log 2>/dev/null | head -1)
+    if [[ -z "${latest_log}" ]]; then
+        echo "No log files found in ${LOG_DIR}/"
+        exit 1
+    fi
+    echo "Following ${latest_log} (Ctrl+C to stop)"
+    tail -f "${latest_log}"
+}
+
+# --- Main ---
+case "${1:-help}" in
+    start)  shift; cmd_start "$@" ;;
+    stop)   cmd_stop ;;
+    status) cmd_status ;;
+    logs)   cmd_logs ;;
+    help|-h|--help) usage 0 ;;
+    *)
+        echo "Unknown command: $1"
+        usage 1
+        ;;
+esac

@@ -45,3 +45,7 @@ playground.ipynb
 .DS_Store
 **/__pycache__/**
 Pipfile
+
+# hsat service management
+tmp/
+logs/

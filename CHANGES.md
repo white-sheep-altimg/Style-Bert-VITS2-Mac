@@ -201,6 +201,43 @@ _pickle.UnpicklingError: Weights only load failed... PyTorch 2.6 changed default
 
 ---
 
+### [New] サービス管理 CLI ツール（`hsat`）
+
+**ファイル**: `hsat`（新規作成）
+**状態**: 新規追加
+
+#### 概要
+
+API サーバー（`server_speech_fastapi.py`）を macOS 上でバックグラウンドデーモンとして管理する CLI ツール。
+
+#### コマンド
+
+```bash
+./hsat start          # バックグラウンド起動（nohup）
+./hsat start --cpu    # CPU モードで起動
+./hsat stop           # SIGTERM で停止（タイムアウト後に SIGKILL）
+./hsat status         # PID とポートで起動状態を確認
+./hsat logs           # 最新のログファイルを tail -f
+./hsat help           # ヘルプ表示
+```
+
+#### 動作の詳細
+
+- **PID 管理**: `tmp/server.pid` でプロセス ID を管理
+- **ログ出力**: `logs/server-YYYYMMDD-HHMMSS.log` にタイムスタンプ付きで保存
+- **重複ガード**: 起動時に既存のプロセスとポート使用をチェック
+- **サーバー起動確認**: ポート開放をポーリング（最大15秒）して起動完了を検知
+- **クリーン停止**: SIGTERM → 10秒待機 → SIGKILL（フォースキル）
+- **nohup**: ターミナル閉じ後もプロセスを継続
+
+#### 追加ファイル
+
+- `logs/` - ログファイル用ディレクトリ（`.gitignore` に追加）
+- `tmp/` - PIDファイル用ディレクトリ（`.gitignore` に追加）
+- `.gitignore` に `tmp/`, `logs/` を追記
+
+---
+
 ### [Debug] トレースコード追加（開発時一時的）
 
 **ファイル**: `style_bert_vits2/nlp/japanese/bert_feature.py`

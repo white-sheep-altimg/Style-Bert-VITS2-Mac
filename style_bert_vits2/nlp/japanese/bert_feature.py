@@ -71,5 +71,7 @@ def extract_bert_feature(
     phone_level_feature = torch.cat(phone_level_feature, dim=0)
 
     result = phone_level_feature.T
-    print(f"DEBUG extract_bert_feature return: dtype={result.dtype}, shape={result.shape}", flush=True)
+    # Jun  9 2026 by H.SATO
+    # print(f"DEBUG extract_bert_feature return: dtype={result.dtype}, shape={result.shape}", flush=True)
+    # end of patch
     return result

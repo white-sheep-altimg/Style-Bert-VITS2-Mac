@@ -4,6 +4,22 @@
 
 Style-Bert-VITS2 の日本語音声合成サーバーを macOS（Apple Silicon）で安定して動作させるための改変です。
 
+## サービス管理（`hsat`）
+
+API サーバー（`server_speech_fastapi.py`）を macOS 上でバックグラウンドサービスとして管理できます。
+
+```bash
+./hsat start          # バックグラウンド起動
+./hsat start --cpu    # CPU モードで起動
+./hsat stop           # サーバーを停止
+./hsat status         # 起動状態を確認
+./hsat logs           # ログをリアルタイム表示（tail -f）
+```
+
+- ログは `logs/server-YYYYMMDD-HHMMSS.log` に自動保存
+- 重複起動ガード機能付き
+- ターミナルを閉じてもサーバーは継続して動作
+
 ## 主な改変内容
 
 ### 1. BERT 特徴量の dtype 不整合修正（`style_bert_vits2/nlp/japanese/bert_feature.py`）
@@ -68,6 +84,14 @@ PyTorch 2.6+ で `torch.load()` の `weights_only` 引数のデフォルトが `
 
 ### 1. サーバー起動
 
+`hsat` コマンドでバックグラウンド起動（推奨）:
+
+```bash
+./hsat start
+```
+
+または直接起動:
+
 ```bash
 .venv/bin/python server_speech_fastapi.py
 ```
@@ -107,6 +131,12 @@ ffprobe output.wav
 - 形式: s16 (16-bit PCM)
 
 ### 4. ログの確認
+
+`hsat logs` でバックグラウンドログをリアルタイム表示:
+
+```bash
+./hsat logs
+```
 
 サーバー起動中に以下の DEBUG ラインが表示され、全 dtype が `torch.float32` となっていれば修正成功です:
 
