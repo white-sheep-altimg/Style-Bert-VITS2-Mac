@@ -416,14 +416,12 @@ class TextEncoder(nn.Module):
         g: Optional[torch.Tensor] = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         # DEBUG: dtype diagnostics for Conv1d layers
-        # Jun  9 2026 by H.SATO
         # print(
         #     f"DEBUG JP-Extra TextEncoder.forward: bert input dtype={bert.dtype}, "
         #     f"bert_proj.weight dtype={self.bert_proj.weight.dtype}, "
         #     f"bert_proj.bias dtype={self.bert_proj.bias.dtype if self.bert_proj.bias is not None else None}",
         #     flush=True,
         # )
-        # end of patch
         bert_emb = self.bert_proj(bert).transpose(1, 2)
         style_emb = self.style_proj(style_vec.unsqueeze(1))
         x = (
